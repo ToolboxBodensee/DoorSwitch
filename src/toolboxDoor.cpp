@@ -15,6 +15,8 @@
 
 bool doorstate_curr = true;
 
+void setDoorOpen(bool doorOpen);
+
 void setup() {
   pinMode(BUTTON_PIN, INPUT_PULLUP);
   doorstate_curr = digitalRead(BUTTON_PIN) == HIGH;
