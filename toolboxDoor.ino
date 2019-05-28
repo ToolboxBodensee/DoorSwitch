@@ -6,11 +6,18 @@
 #define STAPSK  ""
 #define BUTTON_PIN D4
 
-bool doorOpen = true;
+#define HYSTERESIS_TIME_MS  2000
+#define REED_INERVAL_MS     100
+
+#define API_STATE_URL       "https://bodensee.space/cgi-bin/togglestate?space=toolbox&token=&state="
+#define API_STATE_OPEN      "open"
+#define API_STATE_CLOSED    "closed"
+
+bool doorstate_curr = true;
 
 void setup() {
   pinMode(BUTTON_PIN, INPUT_PULLUP);
-  doorOpen = digitalRead(BUTTON_PIN);
+  doorstate_curr = digitalRead(BUTTON_PIN) == HIGH;
 
   Serial.begin(115200);
 
@@ -69,26 +76,46 @@ void setup() {
 }
 
 void loop() {
-  if (doorOpen != digitalRead(BUTTON_PIN)) {
-    doorOpen = digitalRead(BUTTON_PIN);
-    setDoorOpen(doorOpen);
-    delay(100);
+  static uint32_t state_change_iter = 0;
+  static uint32_t state_change_threshold = max(1, HYSTERESIS_TIME_MS / REED_INERVAL_MS);
+
+  // check the current state of the switch
+  bool doorstate_new = digitalRead(BUTTON_PIN) == HIGH;
+  if (doorstate_curr != doorstate_new) {
+    state_change_iter += 1;
+  }else {
+    // state is not consitent in change so start over again
+    state_change_iter = 0;
   }
+
+  // check if we need to propagate the change
+  if (state_change_iter >= state_change_threshold) {
+    state_change_iter = 0;
+    // state long enought the same
+    // so actual trigger the event
+    doorstate_curr = doorstate_new;
+    setDoorOpen(doorstate_curr);
+  }
+
+  delay(REED_INERVAL_MS);
   ArduinoOTA.handle();
 }
 
 void setDoorOpen(bool doorOpen) {
   Serial.print("Setting door open to ");
   Serial.println(doorOpen);
-  HTTPClient http;
+
   BearSSL::WiFiClientSecure *client = new BearSSL::WiFiClientSecure();
   client->setInsecure();
-  String url = String("https://bodensee.space/cgi-bin/togglestate?space=toolbox&token=&state=");
+
+  String url = String(API_STATE_URL);
   if (doorOpen) {
-    url.concat("open");
+    url.concat(API_STATE_OPEN);
   } else {
-    url.concat("closed");
+    url.concat(API_STATE_CLOSED);
   }
+
+  HTTPClient http;
   http.begin(dynamic_cast<WiFiClient&>(*client), url);
   int httpCode = http.GET();
   Serial.print("HTTP response code: ");
