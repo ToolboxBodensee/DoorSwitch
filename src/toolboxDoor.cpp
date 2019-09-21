@@ -13,13 +13,10 @@
 #define API_STATE_OPEN      "open"
 #define API_STATE_CLOSED    "closed"
 
-bool doorstate_curr = true;
-
-void setDoorOpen(bool doorOpen);
+void setDoorState(bool doorState);
 
 void setup() {
   pinMode(BUTTON_PIN, INPUT_PULLUP);
-  doorstate_curr = digitalRead(BUTTON_PIN) == HIGH;
 
   Serial.begin(115200);
 
@@ -78,8 +75,9 @@ void setup() {
 }
 
 void loop() {
-  static uint32_t state_change_iter = 0;
-  static uint32_t state_change_threshold = max(1, HYSTERESIS_TIME_MS / REED_INERVAL_MS);
+  bool doorstate_curr = true;
+  uint32_t state_change_iter = 0;
+  uint32_t state_change_threshold = max(1, HYSTERESIS_TIME_MS / REED_INERVAL_MS);
 
   // check the current state of the switch
   bool doorstate_new = digitalRead(BUTTON_PIN) == HIGH;
@@ -96,22 +94,22 @@ void loop() {
     // state long enought the same
     // so actual trigger the event
     doorstate_curr = doorstate_new;
-    setDoorOpen(doorstate_curr);
+    setDoorState(doorstate_curr);
   }
 
   delay(REED_INERVAL_MS);
   ArduinoOTA.handle();
 }
 
-void setDoorOpen(bool doorOpen) {
+void setDoorState(bool doorState) {
   Serial.print("Setting door open to ");
-  Serial.println(doorOpen);
+  Serial.println(doorState);
 
   BearSSL::WiFiClientSecure *client = new BearSSL::WiFiClientSecure();
   client->setInsecure();
 
   String url = String(API_STATE_URL);
-  if (doorOpen) {
+  if (doorState) {
     url.concat(API_STATE_OPEN);
   } else {
     url.concat(API_STATE_CLOSED);
