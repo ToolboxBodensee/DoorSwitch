@@ -4,12 +4,13 @@
 
 #define STASSID "Toolbox"
 #define STAPSK  ""
+#define SPACE_TOKEN  
 #define BUTTON_PIN D4
 
 #define HYSTERESIS_TIME_MS  2000
 #define REED_INERVAL_MS     100
 
-#define API_STATE_URL       "https://bodensee.space/cgi-bin/togglestate?space=toolbox&token=&state="
+#define API_STATE_URL       "https://bodensee.space/cgi-bin/togglestate?space=toolbox-bodensee&token=SPACE_TOKEN&state="
 #define API_STATE_OPEN      "open"
 #define API_STATE_CLOSED    "closed"
 
