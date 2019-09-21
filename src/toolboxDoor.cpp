@@ -76,9 +76,9 @@ void setup() {
 }
 
 void loop() {
-  bool doorstate_curr = true;
-  uint32_t state_change_iter = 0;
-  uint32_t state_change_threshold = max(1, HYSTERESIS_TIME_MS / REED_INERVAL_MS);
+  static bool doorstate_curr = true;
+  static uint32_t state_change_iter = 0;
+  static uint32_t state_change_threshold = max(1, HYSTERESIS_TIME_MS / REED_INERVAL_MS);
 
   // check the current state of the switch
   bool doorstate_new = digitalRead(BUTTON_PIN) == HIGH;
