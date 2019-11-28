@@ -1,4 +1,7 @@
 # DoorSwitch
+
+**Entwicklung nur auf [GitLab](https://gitlab.com/ToolboxBodensee/microcontroller/DoorSwitch). Auf GitHub befindet sich lediglich ein Mirror**
+
 Firmware for an ESP8266 connected to a switch at the door, updating the space status
 
 Additional Infos are here: [toolbox-bodensee.de/en/projekte/tuererkennung/](https://toolbox-bodensee.de/en/projekte/tuererkennung/)
