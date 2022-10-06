@@ -106,9 +106,6 @@ void setDoorState(bool doorState) {
   Serial.print("Setting door open to ");
   Serial.println(doorState);
 
-  BearSSL::WiFiClientSecure *client = new BearSSL::WiFiClientSecure();
-  client->setInsecure();
-
   String url = String(API_STATE_URL);
   if (doorState) {
     url.concat(API_STATE_OPEN);
@@ -116,8 +113,10 @@ void setDoorState(bool doorState) {
     url.concat(API_STATE_CLOSED);
   }
 
+  BearSSL::WiFiClientSecure client = BearSSL::WiFiClientSecure();
+  client.setInsecure();
   HTTPClient http;
-  http.begin(dynamic_cast<WiFiClient&>(*client), url);
+  http.begin(client, url);
   int httpCode = http.GET();
   Serial.print("HTTP response code: ");
   Serial.println(httpCode);
