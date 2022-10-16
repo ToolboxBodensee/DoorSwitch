@@ -15,4 +15,4 @@ Additional Infos are here: [toolbox-bodensee.de/en/projekte/tuererkennung/](http
 ```
 pio run -t upload
 //or as OTA
-pio run -t upload --upload-port 172.23.25.205```
+pio run -t upload --upload-port 172.23.16.247```
