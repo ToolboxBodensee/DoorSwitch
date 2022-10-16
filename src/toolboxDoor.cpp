@@ -1,6 +1,7 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
 #include <ArduinoOTA.h>
+#include "WebSocketClient.h"
 
 #define STASSID "Toolbox"
 #define STAPSK  ""
@@ -13,6 +14,21 @@
 #define API_STATE_URL       "https://bodensee.space/cgi-bin/togglestate?space=toolbox-bodensee&token=SPACE_TOKEN&state="
 #define API_STATE_OPEN      "open"
 #define API_STATE_CLOSED    "closed"
+
+struct led_control_t {
+  bool secure;
+  const char* url;
+  uint16_t port;
+  const char* path;
+  const char* on_command;
+  const char* off_command;
+};
+
+const led_control_t led_controls[] = {
+  { false, "treppeled.intern.toolbox", 81, "/", "/12", "=off" },
+  { false, "r42-led-tisch.intern.toolbox", 81, "/", "/11", "=off" },
+  { false, "r42-led-wand.intern.toolbox", 81, "/", "/11", "=off" }
+};
 
 void setDoorState(bool doorState);
 
@@ -102,6 +118,31 @@ void loop() {
   ArduinoOTA.handle();
 }
 
+void sendLedWebsocketMessage(const led_control_t& led_control, const bool door_state) {
+  WebSocketClient ws(led_control.secure);//secure
+  ws.connect(led_control.url, led_control.path, led_control.port);
+  if (!ws.isConnected()) {
+    Serial.println("no led connection...");
+    return;
+  }
+  String msg;
+  if (ws.getMessage(msg)) {
+    // expect Connected
+    Serial.println(msg);
+  }
+  ws.send("$");
+  if (ws.getMessage(msg)) {
+    // expect OK
+    Serial.println(msg);
+  }
+  ws.send(door_state ? led_control.on_command : led_control.off_command);
+  if (ws.getMessage(msg)) {
+    // expect OK
+    Serial.println(msg);
+  }
+  ws.disconnect();
+}
+
 void setDoorState(bool doorState) {
   Serial.print("Setting door open to ");
   Serial.println(doorState);
@@ -120,4 +161,8 @@ void setDoorState(bool doorState) {
   int httpCode = http.GET();
   Serial.print("HTTP response code: ");
   Serial.println(httpCode);
+  //quick hack led control
+  for(const auto& led_control : led_controls) {
+    sendLedWebsocketMessage(led_control, doorState);
+  }
 }
