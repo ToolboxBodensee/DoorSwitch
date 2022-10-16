@@ -8,12 +8,12 @@
 #define SPACE_TOKEN  
 #define BUTTON_PIN D4
 
-#define HYSTERESIS_TIME_MS  2000
-#define REED_INERVAL_MS     100
+static constexpr int hysteresis_time_ms = 2000;
+static constexpr int reed_interval_ms = 100;
 
-#define API_STATE_URL       "https://bodensee.space/cgi-bin/togglestate?space=toolbox-bodensee&token=SPACE_TOKEN&state="
-#define API_STATE_OPEN      "open"
-#define API_STATE_CLOSED    "closed"
+#define API_STATE_URL "https://bodensee.space/cgi-bin/togglestate?space=toolbox-bodensee&token=" SPACE_TOKEN
+static constexpr const char* api_state_open = API_STATE_URL "&state=open";
+static constexpr const char* api_state_closed = API_STATE_URL "&state=closed";
 
 struct led_control_t {
   bool secure;
@@ -37,10 +37,7 @@ void setup() {
 
   Serial.begin(115200);
 
-  Serial.println();
-  Serial.println();
-  Serial.print("Connecting to ");
-  Serial.println(STASSID);
+  Serial.printf("\n\nConnecting to %s\n", STASSID);
 
   WiFi.hostname("DoorESP");
   WiFi.mode(WIFI_STA);
@@ -51,14 +48,13 @@ void setup() {
     Serial.print(".");
   }
 
-  Serial.println("");
-  Serial.println("WiFi connected");
+  Serial.println("\nWiFi connected");
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
 
   ArduinoOTA.setHostname("DoorESP");
   ArduinoOTA.onStart([]() {
-    String type;
+    const char* type;
     if (ArduinoOTA.getCommand() == U_FLASH) {
       type = "sketch";
     } else { // U_SPIFFS
@@ -66,7 +62,8 @@ void setup() {
     }
 
     // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
-    Serial.println("Start updating " + type);
+    Serial.print("Start updating ");
+    Serial.println(type);
   });
   ArduinoOTA.onEnd([]() {
     Serial.println("\nEnd");
@@ -75,18 +72,18 @@ void setup() {
     Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
   });
   ArduinoOTA.onError([](ota_error_t error) {
-    Serial.printf("Error[%u]: ", error);
-    if (error == OTA_AUTH_ERROR) {
-      Serial.println("Auth Failed");
-    } else if (error == OTA_BEGIN_ERROR) {
-      Serial.println("Begin Failed");
-    } else if (error == OTA_CONNECT_ERROR) {
-      Serial.println("Connect Failed");
-    } else if (error == OTA_RECEIVE_ERROR) {
-      Serial.println("Receive Failed");
-    } else if (error == OTA_END_ERROR) {
-      Serial.println("End Failed");
+    const char* err_msg;
+    switch(error)
+    {
+    case OTA_AUTH_ERROR: err_msg = "Auth Failed"; break;
+    case OTA_BEGIN_ERROR: err_msg = "Begin Failed"; break;
+    case OTA_CONNECT_ERROR: err_msg = "Connect Failed"; break;
+    case OTA_RECEIVE_ERROR: err_msg = "Receive Failed"; break;
+    case OTA_END_ERROR: err_msg = "End Failed"; break;
+    default: err_msg = "Unknown"; break;
     }
+
+    Serial.printf("Error[%u]: %s\n", error, err_msg);
   });
   ArduinoOTA.begin();
 }
@@ -94,12 +91,12 @@ void setup() {
 void loop() {
   static bool doorstate_curr = true;
   static uint32_t state_change_iter = 0;
-  static uint32_t state_change_threshold = max(1, HYSTERESIS_TIME_MS / REED_INERVAL_MS);
+  static constexpr uint32_t state_change_threshold = max(1, hysteresis_time_ms / reed_interval_ms);
 
   // check the current state of the switch
   bool doorstate_new = digitalRead(BUTTON_PIN) == HIGH;
   if (doorstate_curr != doorstate_new) {
-    state_change_iter += 1;
+    state_change_iter++;
   }else {
     // state is not consitent in change so start over again
     state_change_iter = 0;
@@ -114,7 +111,7 @@ void loop() {
     setDoorState(doorstate_curr);
   }
 
-  delay(REED_INERVAL_MS);
+  delay(reed_interval_ms);
   ArduinoOTA.handle();
 }
 
@@ -144,23 +141,16 @@ void sendLedWebsocketMessage(const led_control_t& led_control, const bool door_s
 }
 
 void setDoorState(bool doorState) {
-  Serial.print("Setting door open to ");
-  Serial.println(doorState);
+  Serial.printf("Setting door open to %d", doorState);
 
-  String url = String(API_STATE_URL);
-  if (doorState) {
-    url.concat(API_STATE_OPEN);
-  } else {
-    url.concat(API_STATE_CLOSED);
-  }
+  String url(doorState ? api_state_open : api_state_closed);
 
-  BearSSL::WiFiClientSecure client = BearSSL::WiFiClientSecure();
+  BearSSL::WiFiClientSecure client;
   client.setInsecure();
   HTTPClient http;
   http.begin(client, url);
-  int httpCode = http.GET();
-  Serial.print("HTTP response code: ");
-  Serial.println(httpCode);
+  Serial.printf("HTTP response code: %u\n", http.GET());
+
   //quick hack led control
   for(const auto& led_control : led_controls) {
     sendLedWebsocketMessage(led_control, doorState);
