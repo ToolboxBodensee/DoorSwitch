@@ -7,6 +7,8 @@
 #define STAPSK  ""
 #define SPACE_TOKEN  
 #define BUTTON_PIN D4
+#define RESEND_COUNT 3
+#define WS_DELAY 100
 
 static constexpr int hysteresis_time_ms = 2000;
 static constexpr int reed_interval_ms = 100;
@@ -137,6 +139,7 @@ void sendLedWebsocketMessage(const led_control_t& led_control, const bool door_s
     // expect OK
     Serial.println(msg);
   }
+  delay(WS_DELAY);
   ws.disconnect();
 }
 
@@ -145,14 +148,16 @@ void setDoorState(bool doorState) {
 
   String url(doorState ? api_state_open : api_state_closed);
 
-  BearSSL::WiFiClientSecure client;
-  client.setInsecure();
-  HTTPClient http;
-  http.begin(client, url);
-  Serial.printf("HTTP response code: %u\n", http.GET());
+  for (int i=0; i<RESEND_COUNT; i++) {
+    BearSSL::WiFiClientSecure client;
+    client.setInsecure();
+    HTTPClient http;
+    http.begin(client, url);
+    Serial.printf("HTTP response code: %u\n", http.GET());
 
-  //quick hack led control
-  for(const auto& led_control : led_controls) {
-    sendLedWebsocketMessage(led_control, doorState);
+    //quick hack led control
+    for(const auto& led_control : led_controls) {
+      sendLedWebsocketMessage(led_control, doorState);
+    }
   }
 }
